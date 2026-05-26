@@ -26,8 +26,7 @@ class ChatWebhookPayload(BaseModel):
 class ChatTransport(Protocol):
     """Outbound transport for chat replies."""
 
-    async def deliver(self, message: ChannelMessage) -> None:
-        ...
+    async def deliver(self, message: ChannelMessage) -> None: ...
 
 
 class InMemoryChatTransport:

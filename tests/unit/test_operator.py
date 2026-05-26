@@ -17,7 +17,7 @@ from convoengine.operator.escalation import (
 from convoengine.orchestrator.conversation import ConversationState
 
 
-def _sample_summary() -> "object":
+def _sample_summary() -> object:
     return build_summary(
         conversation_id="conv-test",
         current_state=ConversationState.ESCALATED,

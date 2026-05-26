@@ -35,7 +35,9 @@ def session() -> Iterator[Session]:
         eng.dispose()
 
 
-def _scripted(action: str, text: str, confidence: float, state: ConversationState) -> ScriptedResponse:
+def _scripted(
+    action: str, text: str, confidence: float, state: ConversationState
+) -> ScriptedResponse:
     return ScriptedResponse(
         raw_json=(
             f'{{"schema_version":1,"action":"{action}","response_text":"{text}",'
@@ -89,9 +91,7 @@ async def test_engine_three_low_conf_turns_escalate_with_operator_post(session: 
     provider.script_default(_scripted("clarify", "uh", 0.4, ConversationState.CLARIFYING))
     sender = RecordingSender()
     op = OperatorClient("http://operator/queue", "shh", sender)
-    engine = Engine(
-        provider=provider, fallback_config=FallbackConfig(), operator_client=op
-    )
+    engine = Engine(provider=provider, fallback_config=FallbackConfig(), operator_client=op)
 
     r1 = await engine.handle_message(session, _msg("hello?"))
     session.commit()

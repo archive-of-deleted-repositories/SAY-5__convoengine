@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Protocol, runtime_checkable
 
@@ -30,7 +30,7 @@ class ChannelMessage(BaseModel):
     sender: str = Field(description="Sender identity. Email address for email, user_id for chat.")
     body: str
     attachments: tuple[str, ...] = Field(default_factory=tuple)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def with_conversation_id(self, conversation_id: str) -> ChannelMessage:
         """Return a new message with the conversation id stamped on it."""

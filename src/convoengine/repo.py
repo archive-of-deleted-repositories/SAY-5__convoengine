@@ -77,9 +77,7 @@ def link_identity(session: Session, conversation_id: str, *, channel: str, ident
     if session.execute(stmt).scalar_one_or_none() is not None:
         return
     session.add(
-        ConversationIdentity(
-            conversation_id=conversation_id, channel=channel, identity=identity
-        )
+        ConversationIdentity(conversation_id=conversation_id, channel=channel, identity=identity)
     )
 
 
@@ -119,9 +117,7 @@ def list_turns(session: Session, conversation_id: str, limit: int | None = None)
     return list(session.execute(stmt).scalars())
 
 
-def set_state(
-    session: Session, conversation: Conversation, state: ConversationState
-) -> None:
+def set_state(session: Session, conversation: Conversation, state: ConversationState) -> None:
     conversation.state = state.value
 
 

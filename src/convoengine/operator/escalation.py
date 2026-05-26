@@ -64,9 +64,7 @@ def compute_hmac(secret: str, body: bytes) -> str:
 class HTTPSender(Protocol):
     """Pluggable transport so tests can swap in an in-process recorder."""
 
-    async def post(
-        self, url: str, headers: dict[str, str], body: bytes
-    ) -> tuple[int, str]: ...
+    async def post(self, url: str, headers: dict[str, str], body: bytes) -> tuple[int, str]: ...
 
 
 class HttpxSender:

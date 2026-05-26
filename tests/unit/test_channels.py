@@ -51,12 +51,8 @@ async def test_email_channel_send_records_message() -> None:
 async def test_email_channel_rejects_wrong_channel_or_direction() -> None:
     store = MockEmailStore()
     channel = EmailChannel(store)
-    wrong_channel = ChannelMessage(
-        channel="chat", direction=Direction.OUT, sender="bot", body="x"
-    )
-    wrong_dir = ChannelMessage(
-        channel="email", direction=Direction.IN, sender="x@y.z", body="x"
-    )
+    wrong_channel = ChannelMessage(channel="chat", direction=Direction.OUT, sender="bot", body="x")
+    wrong_dir = ChannelMessage(channel="email", direction=Direction.IN, sender="x@y.z", body="x")
 
     with pytest.raises(ValueError):
         await channel.send(wrong_channel)
@@ -91,9 +87,7 @@ async def test_chat_channel_ingest_then_poll_returns_message() -> None:
 async def test_chat_channel_send_goes_through_transport() -> None:
     transport = InMemoryChatTransport()
     chat = ChatChannel(transport)
-    msg = ChannelMessage(
-        channel="chat", direction=Direction.OUT, sender="bot", body="ok"
-    )
+    msg = ChannelMessage(channel="chat", direction=Direction.OUT, sender="bot", body="ok")
 
     await chat.send(msg)
 
@@ -101,9 +95,7 @@ async def test_chat_channel_send_goes_through_transport() -> None:
 
 
 def test_channel_message_with_conversation_id_is_immutable_copy() -> None:
-    msg = ChannelMessage(
-        channel="email", direction=Direction.IN, sender="x@y.z", body="hi"
-    )
+    msg = ChannelMessage(channel="email", direction=Direction.IN, sender="x@y.z", body="hi")
     stamped = msg.with_conversation_id("conv-1")
     assert msg.conversation_id is None
     assert stamped.conversation_id == "conv-1"

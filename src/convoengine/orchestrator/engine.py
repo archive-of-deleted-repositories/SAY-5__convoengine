@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from sqlalchemy.orm import Session
+
 from convoengine.channels._base import ChannelMessage, Direction
 from convoengine.operator.escalation import (
     EscalationPayload,
@@ -44,7 +46,6 @@ from convoengine.repo import (
     set_state,
 )
 from convoengine.store import Conversation
-from sqlalchemy.orm import Session
 
 log = logging.getLogger(__name__)
 

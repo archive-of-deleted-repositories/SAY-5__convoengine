@@ -7,9 +7,9 @@ event and returns the next state. Persistence happens elsewhere.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable
 
 
 class ConversationState(str, Enum):
@@ -57,8 +57,12 @@ TRANSITIONS: tuple[Transition, ...] = (
     Transition(ConversationState.ANSWERING, "close", ConversationState.CLOSED),
     Transition(ConversationState.ESCALATED, "operator_takeover", ConversationState.OPERATOR_ACTIVE),
     Transition(ConversationState.ESCALATED, "close", ConversationState.CLOSED),
-    Transition(ConversationState.OPERATOR_ACTIVE, "user_message", ConversationState.OPERATOR_ACTIVE),
-    Transition(ConversationState.OPERATOR_ACTIVE, "operator_message", ConversationState.OPERATOR_ACTIVE),
+    Transition(
+        ConversationState.OPERATOR_ACTIVE, "user_message", ConversationState.OPERATOR_ACTIVE
+    ),
+    Transition(
+        ConversationState.OPERATOR_ACTIVE, "operator_message", ConversationState.OPERATOR_ACTIVE
+    ),
     Transition(ConversationState.OPERATOR_ACTIVE, "operator_resolve", ConversationState.ANSWERING),
     Transition(ConversationState.OPERATOR_ACTIVE, "close", ConversationState.CLOSED),
 )
@@ -88,12 +92,8 @@ class StateMachine:
         try:
             return self._table[(state, event)]
         except KeyError as exc:
-            raise TransitionError(
-                f"no transition from {state.value!r} on event {event!r}"
-            ) from exc
+            raise TransitionError(f"no transition from {state.value!r} on event {event!r}") from exc
 
     @property
     def transition_table(self) -> tuple[Transition, ...]:
-        return tuple(
-            Transition(src, event, dst) for (src, event), dst in self._table.items()
-        )
+        return tuple(Transition(src, event, dst) for (src, event), dst in self._table.items())

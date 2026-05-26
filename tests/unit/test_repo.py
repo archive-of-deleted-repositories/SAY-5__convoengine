@@ -42,9 +42,7 @@ def test_get_or_create_creates_new_conversation(session: Session) -> None:
 
 
 def test_get_or_create_reuses_when_identity_matches(session: Session) -> None:
-    first, _ = get_or_create_conversation(
-        session, channel="email", identity="alice@example.com"
-    )
+    first, _ = get_or_create_conversation(session, channel="email", identity="alice@example.com")
     session.commit()
     second, created = get_or_create_conversation(
         session, channel="email", identity="alice@example.com"
@@ -54,9 +52,7 @@ def test_get_or_create_reuses_when_identity_matches(session: Session) -> None:
 
 
 def test_link_identity_is_idempotent(session: Session) -> None:
-    conv, _ = get_or_create_conversation(
-        session, channel="email", identity="alice@example.com"
-    )
+    conv, _ = get_or_create_conversation(session, channel="email", identity="alice@example.com")
     link_identity(session, conv.id, channel="chat", identity="u-42")
     link_identity(session, conv.id, channel="chat", identity="u-42")
     session.commit()
@@ -66,9 +62,7 @@ def test_link_identity_is_idempotent(session: Session) -> None:
 
 
 def test_record_turn_writes_payload(session: Session) -> None:
-    conv, _ = get_or_create_conversation(
-        session, channel="email", identity="alice@example.com"
-    )
+    conv, _ = get_or_create_conversation(session, channel="email", identity="alice@example.com")
     record_turn(
         session,
         conversation_id=conv.id,
@@ -91,9 +85,7 @@ def test_record_turn_writes_payload(session: Session) -> None:
 
 def test_cross_channel_lookup_returns_same_conversation(session: Session) -> None:
     # Email identity creates the conversation.
-    conv, _ = get_or_create_conversation(
-        session, channel="email", identity="alice@example.com"
-    )
+    conv, _ = get_or_create_conversation(session, channel="email", identity="alice@example.com")
     session.commit()
     # A chat ingest knows the user's email-on-file and asks for either.
     found, created = get_or_create_conversation(

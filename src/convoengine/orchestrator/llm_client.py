@@ -55,8 +55,7 @@ class LLMProvider(Protocol):
 
     name: str
 
-    async def complete(self, request: LLMRequest) -> str:
-        ...
+    async def complete(self, request: LLMRequest) -> str: ...
 
 
 @dataclass
@@ -91,7 +90,9 @@ class FakeLLMProvider:
     )
     calls: list[LLMRequest] = field(default_factory=list)
 
-    def script(self, state: ConversationState, last_message: str, response: ScriptedResponse) -> None:
+    def script(
+        self, state: ConversationState, last_message: str, response: ScriptedResponse
+    ) -> None:
         req = LLMRequest(state=state, history=(), last_message=last_message, channel="email")
         self.by_key[(state, req.hash_key())] = response
 
@@ -122,6 +123,4 @@ class ClaudeProvider:
     async def complete(self, request: LLMRequest) -> str:  # pragma: no cover - not used in tests
         if not self._api_key:
             raise RuntimeError("ClaudeProvider requires an API key")
-        raise NotImplementedError(
-            "ClaudeProvider is a stub. Wire to anthropic SDK when needed."
-        )
+        raise NotImplementedError("ClaudeProvider is a stub. Wire to anthropic SDK when needed.")
