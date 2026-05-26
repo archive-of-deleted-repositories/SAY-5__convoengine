@@ -1,0 +1,13 @@
+{
+  "conversations": 10,
+  "turns": 10,
+  "total_turns": 100,
+  "total_seconds": 0.18,
+  "turns_per_second": 550.0,
+  "p50_turn_ms": 1.6,
+  "p95_turn_ms": 2.6,
+  "p99_turn_ms": 3.5,
+  "p50_conv_ms": 16.0,
+  "p95_conv_ms": 22.0,
+  "p99_conv_ms": 28.0
+}
