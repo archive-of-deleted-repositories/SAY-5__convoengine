@@ -49,3 +49,21 @@ that fresh row.
 The whole machinery is six functions in `src/convoengine/repo.py`. No
 graph traversal, no JOIN through n tables; just an indexed lookup per
 identity.
+
+## Linking after the fact
+
+If a chat user does not have `user_email` on file at ingest time, the
+caller can register the link explicitly:
+
+```
+POST /v1/identities/link
+{
+  "conversation_id": "conv-...",
+  "channel": "chat",
+  "identity": "u-77"
+}
+```
+
+After this call, subsequent chat ingests for `u-77` (with or without the
+email-on-file) will join the named conversation. The endpoint is
+idempotent and never creates a new conversation.

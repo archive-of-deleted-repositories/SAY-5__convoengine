@@ -46,6 +46,13 @@ class OperatorReply(BaseModel):
     operator_id: str = Field(min_length=1)
 
 
+class IdentityLink(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    conversation_id: str = Field(min_length=1)
+    channel: str = Field(min_length=1)
+    identity: str = Field(min_length=1)
+
+
 class TurnView(BaseModel):
     id: str
     channel: str
@@ -204,6 +211,31 @@ def _attach_routes(app: FastAPI) -> None:
                     for t in turns
                 ],
             )
+
+    @app.post("/v1/identities/link")
+    def link_identities(
+        payload: IdentityLink, state: AppState = Depends(state_dep)
+    ) -> dict[str, Any]:
+        """Link a (channel, identity) pair to an existing conversation.
+
+        Used to register, e.g., that a chat `user_id` belongs to the same
+        person as an email address that already has a conversation. After
+        this call, future inbound messages on the new channel will join the
+        existing conversation.
+        """
+        from convoengine.repo import link_identity
+
+        with _session_for(state) as session:
+            conv = session.get(Conversation, payload.conversation_id)
+            if conv is None:
+                raise HTTPException(status_code=404, detail="conversation not found")
+            link_identity(
+                session,
+                conv.id,
+                channel=payload.channel,
+                identity=payload.identity,
+            )
+            return {"conversation_id": conv.id, "linked": True}
 
     @app.post("/v1/operator/take_over/{conversation_id}")
     def operator_take_over(
