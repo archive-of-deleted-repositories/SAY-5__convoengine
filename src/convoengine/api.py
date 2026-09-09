@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,8 +19,10 @@ from convoengine.operator.escalation import HttpxSender, OperatorClient
 from convoengine.orchestrator.conversation import ConversationState
 from convoengine.orchestrator.engine import Engine
 from convoengine.orchestrator.fallback import FallbackConfig
-from convoengine.orchestrator.llm_client import FakeLLMProvider, LLMProvider
+from convoengine.orchestrator.llm_client import ClaudeProvider, LLMProvider, LLMProviderError
+from convoengine.orchestrator.provider_factory import build_provider
 from convoengine.repo import list_turns, set_state
+from convoengine.security import PaidServiceBoundary
 from convoengine.store import (
     Conversation,
     create_all,
@@ -80,19 +83,28 @@ class AppState:
     engine: Engine
 
 
-def build_app(*, provider: LLMProvider | None = None, db_url: str | None = None) -> FastAPI:
+def build_app(
+    *,
+    provider: LLMProvider | None = None,
+    db_url: str | None = None,
+    settings: Settings | None = None,
+    defer_database: bool = False,
+) -> FastAPI:
     """Construct a FastAPI app instance.
 
     Both `provider` and `db_url` are injectable so tests can pass in a Fake
     provider and a per-test database.
     """
-    settings = get_settings()
-    actual_db_url = db_url or settings.db_url
-    eng = make_engine(actual_db_url)
-    create_all(eng)
-    factory = make_session_factory(eng)
-
-    llm: LLMProvider = provider if provider is not None else FakeLLMProvider()
+    settings = settings if settings is not None else get_settings()
+    # Validate provider, model and paid service authentication before touching DB.
+    configured_provider = build_provider(settings)
+    llm = provider if provider is not None else configured_provider
+    if settings.llm_provider == "claude" and llm.name != "claude":
+        raise ValueError("Claude mode cannot be replaced by a different provider.")
+    if settings.llm_provider != "claude" and (
+        isinstance(llm, ClaudeProvider) or llm.name == "claude"
+    ):
+        raise ValueError("A Claude provider requires explicit paid-mode configuration.")
     operator_client = OperatorClient(
         url=settings.operator_url,
         secret=settings.operator_hmac_secret,
@@ -110,9 +122,49 @@ def build_app(*, provider: LLMProvider | None = None, db_url: str | None = None)
         max_summary_turns=settings.max_summary_turns,
     )
 
-    state = AppState(settings=settings, session_factory=factory, engine=orchestrator)
-    app = FastAPI(title="ConvoEngine", version="0.1.0")
-    app.state.convo = state
+    database: Any = None
+
+    def initialize(app: FastAPI) -> None:
+        nonlocal database
+        database = make_engine(db_url or settings.db_url)
+        try:
+            create_all(database)
+        except BaseException:
+            database.dispose()
+            database = None
+            raise
+        app.state.convo = AppState(
+            settings=settings,
+            session_factory=make_session_factory(database),
+            engine=orchestrator,
+        )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        nonlocal database
+        if database is None:
+            initialize(app)
+        try:
+            yield
+        finally:
+            if database is not None:
+                database.dispose()
+                database = None
+
+    app = FastAPI(title="ConvoEngine", version="0.1.0", lifespan=lifespan)
+    if not defer_database:
+        initialize(app)
+    if settings.llm_provider == "claude":
+        app.add_middleware(
+            PaidServiceBoundary,
+            service_key=settings.service_api_key,
+            max_concurrency=settings.paid_max_concurrency,
+        )
+
+    @app.exception_handler(LLMProviderError)
+    async def provider_error(_request: Request, _error: LLMProviderError) -> JSONResponse:
+        return JSONResponse({"detail": "Claude service unavailable."}, status_code=503)
+
     _attach_routes(app)
     return app
 
@@ -129,7 +181,7 @@ def _session_for(state: AppState) -> Iterator[Session]:
     try:
         yield s
         s.commit()
-    except Exception:
+    except BaseException:
         s.rollback()
         raise
     finally:
@@ -272,8 +324,6 @@ def _attach_routes(app: FastAPI) -> None:
             return {"conversation_id": conv.id, "state": conv.state}
 
 
-# Convenience module-level instance for `uvicorn convoengine.api:app`.
-try:
-    app = build_app()
-except Exception:  # pragma: no cover - graceful degrade when env is incomplete
-    app = FastAPI(title="ConvoEngine (uninitialized)")
+# Validate configuration at import; defer DB connection until server startup.
+# Configuration and startup failures propagate instead of serving an empty app.
+app = build_app(defer_database=True)

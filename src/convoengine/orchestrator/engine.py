@@ -188,7 +188,6 @@ class Engine:
                 self.state_machine,
                 state_before,
                 event=_event_for_action(outcome.response.action),
-                fallback_state=outcome.response.suggested_state,
             )
             outbound = ChannelMessage(
                 channel=inbound.channel,
@@ -251,7 +250,6 @@ class Engine:
             self.state_machine,
             state_before,
             event="escalate",
-            fallback_state=ConversationState.ESCALATED,
         )
         outbound = ChannelMessage(
             channel=inbound.channel,
@@ -338,13 +336,12 @@ def _apply_event(
     state: ConversationState,
     *,
     event: str,
-    fallback_state: ConversationState,
 ) -> ConversationState:
-    """Apply an event; if the transition is not in the table, snap to the suggested state."""
+    """Apply only transitions allowed by the controller's state machine."""
     try:
         return sm.apply(state, event)
     except TransitionError:
-        # Suggested state must still be reachable by some event; if not, stay put.
+        # Model suggestions cannot reopen terminal states or claim operator control.
         if sm.can(state, "user_message"):
             return sm.apply(state, "user_message")
-        return fallback_state
+        return state
